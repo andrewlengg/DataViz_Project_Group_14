@@ -1,0 +1,557 @@
+---
+title: "Group Project AM10"
+author: "Joël Merki"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    theme: flatly
+    highlight: zenburn
+    number_sections: true
+    toc: yes
+    toc_float: yes
+editor_options: 
+  markdown: 
+  wrap: 72
+---
+
+```{r libraries, include=FALSE}
+
+library(tidyverse)
+library(extrafont)
+library(vroom)
+library(ggtext)
+library(gapminder)
+library(ggrepel)
+library(patchwork)
+library(gghighlight)
+library(skimr)
+library(treemapify)
+library(lubridate)
+library(janitor)
+library(sf)
+library(mapboxapi)
+library(mapdeck)
+library(leaflet)
+library(scales)
+library(ggmap)
+library(gridExtra)
+library(pander)
+library(here)
+library(tmap)
+library(tmaptools)
+library(hrbrthemes)
+library(mapview)
+library(viridis)
+library(rnaturalearth)
+library(xkcd)
+
+```
+
+# Plastic Pollution: From Production to the Ocean
+
+**What problems or questions did you set out to analyse? What were the key issues raised?**
+
+> We set out to investigate plastic waste pollution across the world. We strived to obtain a comprehensive understanding of global plastic pollution by analyzing elements of plastic waste starting at a broad global production scale, then traveling to plastic mismanagement metrics, and finally analyzing the plastic that settles in the ocean. We wanted to focus on these metrics by country or region but issues of scale were raised which lead us to incorporate the use of overall share as well as per capita data in order to give our data story a well-rounded outlook.
+
+**How did you prepare for the project? What sources or background readings did you consult? What information did you use in developing your ideas from the conceptual stage to the finished project? What did you do, and how did you do it? What statistical techniques did you use --- for instance, scatterplots, correlation, confidence intervals, linear/logistic regression?**
+
+> Our group consulted reports from sites such as ourworldindata.org/plastic-pollution and theoceancleanup.com as our primary sources to find data as well as supplementary news articles to provide context as to the world plastic pollution environment. Some article sources we used for context included the international Union for Conservation of Nature (iucn.org) and Earth.org (earth.org/chinas-import-ban) to provide some background. We used data sets from ourworldindata.org as well as theoceancleanup.com to look at overall pollution overtime and by sector. To focus our analysis on pollution by country or continent we utilized geospatial visualization techniques. To investigate the relationship between GDP and plastic we used a scatterplot.
+
+# Global plastic production
+
+```{r}
+
+# loading and cleaning global plastic production data
+plastic_production <- read_csv("Plastic pollution data/Global plastics production.csv")
+cum_plastic_production <- read_csv("Plastic pollution data/cumulative-global-plastics.csv")
+
+plastic_production_clean <- plastic_production %>% 
+  clean_names() %>% 
+  select(.,-"code")
+
+cum_plastic_production_clean <- cum_plastic_production %>% 
+  clean_names() %>% 
+  select(.,-"code", -"entity")
+
+glimpse(plastic_production_clean)
+glimpse(cum_plastic_production_clean)
+
+plastic_production_joined <- plastic_production_clean %>% 
+  left_join(cum_plastic_production_clean, by = "year") 
+
+glimpse(plastic_production_joined)
+
+# Plot total production only 
+proudction_plot <- plastic_production_joined %>% 
+  ggplot(aes(x = year, y = global_plastics_production)) +
+  geom_line()
+
+proudction_plot
+
+label1 <- "Global plastic production \nin 2019 has reached \n460 mn tonnes"
+
+library(extrafont)
+library(ggtext)
+
+# Plot total production + cumulative production - check whether makes sense  
+plot_1 <- plastic_production_joined %>% 
+  ggplot(aes(x = year)) +
+  geom_bar(aes(y = global_plastics_production/1000000), fill = "#910202", stat="identity") +
+  # scale_fill_manual(values = my_colours_2) + 
+  geom_line(aes(y = cumulative_global_plastics_production/1000000), colour = "#78a4cc", size = 1) +
+  theme_minimal() +
+  scale_y_continuous(labels=c("0", "2.5 billion tonnes", "5 billion tonnes", "7.5 billion tonnes", "10 billion tonnes")) +
+  
+  labs(colour = "#0f2b45",
+       title = "<b> Global plastic production has increased gradually year on year</b><br>
+       <span style = 'font-size:14pt'><span style='color:#910202'>Yearly total</span> and <span style='color:#78a4cc'>cumulative </span>global plastic production</span><br>  ",
+       caption="Plastic production refers to the annual production of polymer resin and fibers\nSource: Our World in Data", 
+       x ="", 
+       y = "") +
+
+  theme(
+    plot.title.position = "plot",
+    plot.title = element_textbox_simple(size=18, vjust = 10),
+    # plot.subtitle = element_text(size=18),
+    # axis.title.y = element_text(angle = 0, vjust = 0.5,size=14),
+    axis.text = element_text(size=12),
+    plot.caption = element_text(size=8),
+    legend.position = "none",
+    panel.grid.major = element_line(linetype = "dotted"),
+    panel.grid.minor = element_line(linetype = "blank"),
+    panel.grid.major.x = element_blank() ,
+           panel.grid.major.y = element_line( size=.1, color="black")
+    ) +
+
+  geom_curve(
+    data = data.frame(x = 2015, y = 1500, xend = 2019, yend = 600),
+    mapping = aes(x = x, y = y, xend = xend, yend = yend),
+    colour = "grey15",
+    size = 0.3,
+    curvature = -0.25,
+    arrow = arrow(length = unit(2, "mm"), type = "closed"),
+    inherit.aes = FALSE) +
+  
+  geom_text(
+    data = data.frame(x = 2000, y = 2050, label = label1),
+    aes(x = x, y = y, label = label1),
+    colour="black",
+    hjust = 0,
+    lineheight = .8,
+    inherit.aes = FALSE,) 
+
+plot_1
+
+
+```
+
+> From 1950 to 2019, yearly plastic production has increased 260 times, with cumulative plastic increasing exponentially to 8 billion tonnes. As plastic takes over 400 years to decompose, this cumulative metric represents the amount of plastic in our world with the potential to be polluting our environment.
+
+# Plastic production by sector
+
+```{r}
+
+# BY SECTOR: 
+ sector_production <- read_csv("Plastic pollution data/plastic-production-by-sector.csv") %>%
+  janitor::clean_names()
+sector_waste <- read_csv("Plastic pollution data/plastic-waste-by-sector.csv") %>%
+  janitor::clean_names() 
+
+sector <-full_join(sector_production,sector_waste,by=c("entity")) 
+sector <- janitor::remove_empty(sector, which = c("rows","cols"))
+sector <- sector %>%
+  select(entity, primary_plastic_production_million_tonnes, primary_plastic_waste_generation_million_tonnes) %>%
+  filter(entity != "All industrial sectors") %>%
+  rename(Production=primary_plastic_production_million_tonnes,
+         Waste=primary_plastic_waste_generation_million_tonnes) %>%
+  pivot_longer(cols=2:3, names_to="cause",values_to="plastic_million_tonnes") 
+
+sector2 <- sector %>%
+  group_by(entity, cause) %>%
+  filter(entity %in% c("Packaging", "Building and Construction", "Other sectors", "Textiles", "Consumer & Institutional Products", "Electrical/Electronic", "Transportation")) %>%
+  arrange(desc(plastic_million_tonnes), by.group= FALSE)
+
+sector2$entity <- str_wrap(sector2$entity, width = 15)
+plot_2 <- ggplot(data = sector2, 
+                       aes(x= factor(reorder(entity,desc(plastic_million_tonnes))) ,
+                           y= plastic_million_tonnes/1000000, 
+                           fill=cause,))+
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x="",y="", title="Packaging Contributes the Most to Plastic Production & Waste", subtitle="Primary global production by industrial sector, measured in million tonnes per year", fill="", caption="Source: Geyer et al. (2017)")+
+  theme_minimal()+
+  scale_y_continuous(labels = scales::comma_format())+
+  scale_fill_manual(values=c("#0f2b45","#a4d4ff"))+
+  scale_x_discrete(guide = guide_axis(angle=45))+
+    theme(
+      panel.grid.major = element_line(linetype = "dotted"),
+      panel.grid.minor = element_line(linetype = "blank"),
+      # remove the vertical grid lines
+      panel.grid.major.x = element_blank() ,
+      # # explicitly set the horizontal lines (or they will disappear too)
+      panel.grid.major.y = element_line( size=.1, color="black"),
+
+      plot.title.position = "plot",
+      plot.title = element_text(size=16, vjust = 1, face="bold"),
+      axis.title.y = element_text(angle = 0, vjust = 0.5,size=14),
+      axis.text = element_text(size=10)
+      )
+
+plot_2
+
+
+```
+
+> \"Packaging\" produces and wastes more than twice as much as any other single industry. With the increase in online shopping and single use packaging for the shipment of goods this disparity has most likely increased since 2015 as a majority of packaging is discarded after the product it contains is received. 
+
+# Waste disposal
+
+```{r}
+
+# loading Waste by disposal data 
+Waste_by_disposal <- vroom::vroom(here::here("/Users/joelmerki/Documents/LBS/Courses/Data visualisations/Group work/Plastic pollution data/global-plastic-fate.csv"))
+
+Waste_by_disposal_clean <- Waste_by_disposal %>% 
+  clean_names() %>% 
+  select(.,-"code")
+
+glimpse(Waste_by_disposal_clean)
+
+my_colours <- c("#a4d4ff", "#426788", "#0f2b45")
+
+# full palette of colours: "#a4d4ff", "#78a4cc", "#1b4469", "#426788", "#0f2b45"
+
+label0 <- "Beginning of plastic \nrecycling"
+
+plot_3 <- Waste_by_disposal_clean %>% 
+  # mutate(year_asy = ymd(year)) %>% 
+  # filter(entity == "Discarded") %>% 
+  ggplot(aes(x = year, y = estimated_historic_plastic_fate/100, fill = entity)) +
+  geom_area(alpha = 0.6) +
+  scale_fill_manual(values = my_colours) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  # scale_x_date(date_breaks = "5 years", date_labels =  "%Y") +
+  # scale_x_discrete (breaks = c("1980", "1985", "1990", "1995", "2000", "2005", "2010", "2015"), labels = c("1980", "1985", "1990", "1995", "2000", "2005", "2010", "2015")) +
+  theme_minimal() +
+  labs(title= "Gradual Increase of Incinerated and Recycled Plastic Since 1980", subtitle = "Estimated share of global plastic waste by disposal method, 1980 to 2015", caption="Source: Geyer et al. (2017)", x ="", y = "", fill = "Disposal method") +
+  theme(panel.grid.major = element_line(linetype = "dotted"),
+    panel.grid.minor = element_line(linetype = "blank")) +
+  theme( # remove the vertical grid lines
+           panel.grid.major.x = element_blank() ,
+           # explicitly set the horizontal lines (or they will disappear too)
+           panel.grid.major.y = element_line( size=.1, color="black" ) 
+    ) + 
+  geom_segment(aes(x = 1988, y = 0, xend = 1988, yend = .25), linetype="dashed", colour = "grey") +
+  
+    theme(
+    plot.title.position = "plot",
+    plot.title = element_text(size=16, vjust = 1, face="bold"),
+    axis.title.y = element_text(angle = 0, vjust = 0.5,size=14),
+    axis.text = element_text(size=10)) +
+  
+  geom_text(
+    data = data.frame(x = 1988, y = 0.3, label = label0),
+    aes(x = x, y = y, label = label0),
+    colour="black",
+    hjust = 0,
+    lineheight = .8,
+    inherit.aes = FALSE,) +labs(x = NULL, y = NULL)
+  
+plot_3
+
+```
+
+> Since 1980, there has been a significant increase in the amount of plastic being recycled as well as incinerated which together account for almost 50 % of plastic waste in 2015. Before 1980, almost all plastic was simply discarded.
+
+# Waste map
+
+```{r}
+
+world <- ne_countries(scale="medium", returnclass = "sf") %>%
+  filter(name!="Antarctica")
+
+waste <- read_csv("Plastic pollution data/share-of-global-mismanaged-plastic-waste.csv") %>%
+  janitor::clean_names()
+country_waste <- waste %>%
+  drop_na(code)
+country_waste$code[country_waste$code == "ESH"] <- "SAH"
+country_waste$code[country_waste$code == "PRT"] <- "PR1"
+country_waste$code[country_waste$code == "PNG"] <- "PN1"
+country_waste$code[country_waste$code == "PSA"] <- "PSX"
+
+waste_world <-full_join(world,country_waste,by=c("su_a3"="code")) %>%
+  select(name,entity, su_a3, year, share_of_global_mismanaged_plastic_waste, geometry)
+
+waste_map <- ggplot(data = waste_world) +
+  geom_sf(mapping = aes(
+    geometry = geometry, #use Natural Earth World boundaries
+    fill = share_of_global_mismanaged_plastic_waste/100 #fill colour = population estimate
+    ),
+    colour = "white",      # white borders between region
+    ) +
+  coord_sf(datum = NA) + 
+  labs(title= "China and India Account for over 40% of Global Mismanaged Plastic Waste", subtitle= "Share of global mismanaged plastic by country", caption="Source: Meijer et al. (2021)", fill = "") +
+  scale_fill_gradient(low = "#fcd9d6", high = "#6e0000", labels = scales::percent_format()) +
+  scale_y_continuous(labels = scales::percent_format())+
+  NULL +
+    theme_void() +
+   theme(
+    plot.title.position = "plot",
+    plot.title = element_text(size=16, vjust = 1, face="bold"),
+    axis.title.y = element_text(angle = 0, vjust = 0.5,size=14),
+    axis.text = element_text(size=10)) 
+
+waste_map
+
+
+```
+
+> Mismanaged plastic waste is plastic that is either littered or inadequately disposed. This does not include waste exported overseas. Notice more than 40% of total mismanaged plastic comes from India and China. 
+
+# Waste map / capita
+
+```{r}
+
+#PER CAPITA: 
+waste_per_person <- read_csv("Plastic pollution data/Mismanaged plastic waste.csv") %>%
+  janitor::clean_names() %>%
+  rename(per_person=mismanaged_plastic_waste_per_capita_kg_per_year)
+country_waste_per_person <- waste_per_person %>%
+  drop_na(code)
+country_waste_per_person$code[country_waste_per_person$code == "ESH"] <- "SAH"
+country_waste_per_person$code[country_waste_per_person$code == "PRT"] <- "PR1"
+country_waste_per_person$code[country_waste_per_person$code == "PNG"] <- "PN1"
+country_waste_per_person$code[country_waste_per_person$code == "PSA"] <- "PSX"
+
+waste_world_per_person <-full_join(world,country_waste_per_person,by=c("su_a3"="code")) %>%
+  select(name,entity, su_a3, year, per_person, geometry)
+
+waste_map_per_person <- ggplot(data = waste_world_per_person) +
+  geom_sf(mapping = aes(
+    geometry = geometry, #use Natural Earth World boundaries
+    fill = per_person #fill colour = population estimate
+    ),
+    colour = "white",      # white borders between region
+    ) +
+  coord_sf(datum = NA) + 
+  labs(title= "Mismanaged Plastic Per Capita is Greatest in Africa and South America", subtitle="Mismanaged plastic waste in KG per person per year, 2019", caption="Source: Meijer et al. (2021)", fill= "KG / capita") +
+ scale_fill_gradient(low = "#fcd9d6", high = "#6e0005",   na.value = "#dddddd")+
+  theme_void()+
+  NULL+ 
+      theme(
+    plot.title.position = "plot",
+    plot.title = element_text(size=16, vjust = 1, face="bold"),
+    axis.title.y = element_text(angle = 0, vjust = 0.5,size=14),
+    axis.text = element_text(size=10)) 
+
+waste_map_per_person
+
+```
+
+> In the above graph we highlight mismanagement of plastic on a per capita basis in order to normalise the data. When population is accounted for, the narrative shifts and we can see that it is not China and India anymore that are the highest mismanagers of plastic, but countries in Africa and South America.
+
+# Top rivers
+
+```{r}
+
+riversJM <- read_csv("Plastic pollution data/plastics-top-rivers.csv") %>%
+  janitor::clean_names() %>% 
+  arrange(desc(share_of_global_plastics_emitted_to_ocean)) %>% 
+  head(15) 
+
+glimpse(riversJM)
+
+rivers_ranking <- riversJM %>%
+  ggplot(aes(x= reorder(entity,(share_of_global_plastics_emitted_to_ocean)),
+                           y= share_of_global_plastics_emitted_to_ocean/100,
+                           fill=share_of_global_plastics_emitted_to_ocean))+
+  theme_void()+
+  scale_y_continuous(labels = scales::percent_format()) +
+
+  geom_col(aes(fill=ifelse((grepl("Philippines", entity))==TRUE, "#0f2b45", "grey")))+ 
+  scale_fill_manual(values = c("#0f2b45", "grey")) +
+  labs(x="",y="", title="Of the Worlds Top 15 Polluting Rivers, 10 Are in the Philipines", subtitle="Share of global ocean plastic pollution from largest emitting rivers", caption = "Source: Meijer et al. (2021)")+
+  coord_flip()+
+  theme_minimal() +
+  theme(legend.position = "none") +
+  
+    scale_y_continuous(labels=scales::percent_format())+
+      theme(
+      panel.grid.major = element_line(linetype = "dotted"),
+      panel.grid.minor = element_line(linetype = "blank"),
+      # remove the vertical grid lines
+      panel.grid.major.y = element_blank() ,
+      # # explicitly set the horizontal lines (or they will disappear too)
+      panel.grid.major.x = element_line( size=.1, color="black"),
+
+      plot.title.position = "plot",
+      plot.title = element_text(size=16, vjust = 1, face="bold"),
+      axis.title.y = element_text(angle = 0, vjust = 0.5,size=14),
+      axis.text = element_text(size=10)
+      )
+
+rivers_ranking
+
+```
+
+> Of the top 15 rivers contributing plastic waste to the ocean, the Philippines contains 10 and is responsible for 35% of the world\'s plastic emitted to the ocean. This level of pollution is in large part due to the lack of infrastructure and economic resources to properly handle discarded and mismanaged waste.
+
+# Ocean pollution map
+
+```{r}
+
+share_plastic <- read_csv("Plastic pollution data/share-of-global-plastic-waste-emitted-to-the-ocean.csv") %>%
+  janitor::clean_names() %>%
+  drop_na(code) %>%
+  arrange(desc(share_of_global_plastics_emitted_to_ocean))
+
+share_plastic$code[share_plastic$code == "PRT"] <- "PR1"
+share_plastic$code[share_plastic$code == "PNG"] <- "PN1"
+share_plastic$code[share_plastic$code == "PSE"] <- "PSX"
+share_plastic$code[share_plastic$code == "ESH"] <- "SAH"
+share_plastic$code[share_plastic$code == "PSE"] <- "PSX"
+
+share_plastic_map <-full_join(world, share_plastic,by=c("su_a3"="code")) %>%
+  select(name, su_a3, entity, share_of_global_plastics_emitted_to_ocean, geometry) %>%
+  drop_na(name) %>%
+  mutate(share=share_of_global_plastics_emitted_to_ocean/100)
+
+
+labelmap <- "Philippines"
+
+share_plastic_map2 <- ggplot(data = share_plastic_map) +
+  geom_sf(mapping = aes(
+    geometry = geometry, #use Natural Earth World boundaries
+    fill = share #fill colour = population estimate
+    ),
+    colour = "white",      # white borders between region
+    ) +
+  labs(title= "Philippines and India Account for Almost 50% of Ocean Plastic Pollution", subtitle="Share of global plastic waste emitted to the ocean, 2019",caption="Source: Meijer et al. (2021).", fill= "", x="", y="") +
+ scale_fill_gradient(low = "#a4d4ff", high = "#0f2b45",   na.value = "#dddddd", labels = scales::percent_format())+
+  geom_curve(
+    data = data.frame(x = 134, y = 22, xend = 124, yend = 15),
+    mapping = aes(x = x, y = y, xend = xend, yend = yend),
+    colour = "grey15",
+    size = 0.3,
+    curvature = 0.25,
+    arrow = arrow(length = unit(2, "mm"), type = "closed"),
+    inherit.aes = FALSE) +
+  geom_text(
+    data = data.frame(x = 136, y = 22, label = labelmap),
+    aes(x = x, y = y, label = labelmap),
+    size = 4,
+    colour="black",
+    hjust = 0,
+    lineheight = .8,
+    inherit.aes = FALSE,) +
+    coord_sf(datum = NA) +
+      theme_void() +
+   theme(
+    plot.title.position = "plot",
+    plot.title = element_text(size=16, vjust = 1, face="bold"),
+    axis.title.y = element_text(angle = 0, vjust = 0.5,size=14),
+    axis.text = element_text(size=10)) 
+
+share_plastic_map2
+
+
+```
+
+> In addition to poor waste management infrastructure, the Philippines and India have high population levels along their coasts and ocean bound rivers which are significant factors contributing to ocean plastic pollution.
+
+# Waste trade
+
+```{r}
+
+# waste exports: 
+waste_trade <- read_csv("Plastic pollution data/Plastic waste exports:imports per capita.csv") %>%
+  janitor::clean_names() %>%
+  filter(entity %in% c("Asia", "Europe", "North America", "World", "Africa", "Oceania", "South America")) %>%
+  group_by(entity)
+
+colors<- c("#a70000", "#ff0000", "#fff2cc","#a4d4ff", "#0f2b45")
+
+trade_vis <- ggplot(data=waste_trade)+
+  geom_point(data=waste_trade, aes(x=year, y=waste_exports/1000000, group=entity, color=entity))+
+  geom_line(data=waste_trade, aes(x=year, y=waste_exports/1000000, group=entity, color=entity))+
+  theme_minimal()+
+  labs(x="", y="", title="Europe is the World's Largest Plastic Waste Exporter", subtitle="Waste exports in million tonnes until 2021", caption= "Source: United Nations Comtrade Database", color="")+
+  scale_color_manual(values =c('#a70000', '#ff0000', '#426788', '#a4d4ff','#dca44c', '#6aa84f', '#bcbcbc'))+
+  scale_fill_discrete(name=NULL) +
+    theme(
+      panel.grid.major = element_line(linetype = "dotted"),
+      panel.grid.minor = element_line(linetype = "blank"),
+      # remove the vertical grid lines
+      # panel.grid.major.x = element_blank() ,
+      # # explicitly set the horizontal lines (or they will disappear too)
+      # panel.grid.major.y = element_line( size=.1, color="black"),
+
+      plot.title.position = "plot",
+      plot.title = element_text(size=16, vjust = 1, face="bold"),
+      axis.title.y = element_text(angle = 0, vjust = 0.5,size=14),
+      axis.text = element_text(size=10)
+      )
+
+trade_vis
+```
+
+> Europe is the largest exporter of plastic waste, but it is also the largest importer of plastic waste because many European countries trade with one another. With China inducting a ban on plastic waste imports at the end of 2017, the number of exports in Asia decreased, as most traded plastic waste is traded within regions.
+
+# Ocean plastic waste vs GDP per cap
+
+```{r}
+
+# loading and cleaning data
+Waste_vs_GDP <- read_csv("Plastic pollution data/ocean-plastic-waste-per-capita-vs-gdp.csv")
+
+Waste_vs_GDP_clean <- Waste_vs_GDP %>% 
+  clean_names() %>% 
+  select(.,-"continent") %>% 
+  drop_na()
+
+glimpse(Waste_vs_GDP_clean)
+
+Waste_vs_GDP_clean_selection <- Waste_vs_GDP_clean %>%
+  mutate(tn = ifelse(mismanaged_plastic_waste_to_ocean_per_capita_kg_per_year > 0.6 | gdp_per_capita_ppp_constant_2017_international > 75000, TRUE, FALSE)) %>% 
+  filter(tn == TRUE)
+
+vector1 <- Waste_vs_GDP_clean_selection$entity
+
+plot_9 <- Waste_vs_GDP_clean %>% 
+  mutate(
+    label = ifelse(entity  %in% vector1, as.character(entity), "")
+  )  %>% 
+  ggplot(aes(x = gdp_per_capita_ppp_constant_2017_international, y = mismanaged_plastic_waste_to_ocean_per_capita_kg_per_year)) +
+  geom_point(
+    size = 2,
+    alpha = 0.8,
+    shape = 21,
+    colour = "white",
+    fill = "#0f2b45"
+  ) +
+  geom_text_repel(aes(label=label), max.overlaps = getOption("ggrepel.max.overlaps", default = 3), size = 3) +
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank()) +
+    scale_y_continuous(labels=c("0", "1 Kg", "2 Kg", "3 Kg")) +
+  labs(title= "Largest ocean pollution contributors tend to have lower GDP / capita", subtitle = "Plastic waste in Kg emitted to the ocean per capita vs. GDP per capita, 2019", caption="Gross domestic product (GDP) per capita is measured in constant international-dollars \nwhich corrects for inflation and cross-country price differences. Source: Geyer et al. (2017)", x ="GDP per capita in $", y = "") +
+scale_x_continuous(labels=scales::dollar_format()) +
+  # geom_smooth(method='lm') +
+    theme(
+      panel.grid.major = element_line(linetype = "dotted"),
+      panel.grid.minor = element_line(linetype = "blank"),
+      # remove the vertical grid lines
+      # panel.grid.major.x = element_blank() ,
+      # # # explicitly set the horizontal lines (or they will disappear too)
+      # panel.grid.major.y = element_line( size=.1, color="black"),
+
+      plot.title.position = "plot",
+      plot.title = element_text(size=16, vjust = 1, face="bold"),
+      axis.title.y = element_text(angle = 0, vjust = 0.5,size=14),
+      axis.text = element_text(size=10)
+      )
+  
+plot_9
+
+
+```
+
+> The only countries with comparatively high levels of pollution per capita (\> 1 Kg of plastic waste emitted to the ocean per capita) are in the lower 30% of GDP income countries. This is because higher income countries can afford the infrastructure to manage their plastic waste whereas the lower income countries may not, especially if they are heavily populated.
