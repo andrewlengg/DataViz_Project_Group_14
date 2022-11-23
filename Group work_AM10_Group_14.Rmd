@@ -170,7 +170,7 @@ plot_2 <- ggplot(data = sector2,
                            y= plastic_million_tonnes/1000000, 
                            fill=cause,))+
   geom_bar(stat = "identity", position = "dodge") +
-  labs(x="",y="", title="Packaging Contributes the Most to Plastic Production & Waste", subtitle="Primary global production by industrial sector, measured in million tonnes per year", fill="", caption="Source: Geyer et al. (2017)")+
+  labs(x="",y="", title="Packaging Contributes the Most to Plastic Production & Waste", subtitle="Primary global production by industrial sector, measured in million tonnes per year, 2015", fill="", caption="Source: Geyer et al. (2017)")+
   theme_minimal()+
   scale_y_continuous(labels = scales::comma_format())+
   scale_fill_manual(values=c("#0f2b45","#a4d4ff"))+
@@ -190,7 +190,6 @@ plot_2 <- ggplot(data = sector2,
       )
 
 plot_2
-
 
 ```
 
@@ -233,7 +232,7 @@ plot_3 <- Waste_by_disposal_clean %>%
            # explicitly set the horizontal lines (or they will disappear too)
            panel.grid.major.y = element_line( size=.1, color="black" ) 
     ) + 
-  geom_segment(aes(x = 1988, y = 0, xend = 1988, yend = .25), linetype="dashed", colour = "grey") +
+  geom_segment(aes(x = 1988, y = 0, xend = 1988, yend = .25), linetype="dashed", colour = "black") +
   
     theme(
     plot.title.position = "plot",
@@ -282,7 +281,7 @@ waste_map <- ggplot(data = waste_world) +
     colour = "white",      # white borders between region
     ) +
   coord_sf(datum = NA) + 
-  labs(title= "China and India Account for over 40% of Global Mismanaged Plastic Waste", subtitle= "Share of global mismanaged plastic by country", caption="Source: Meijer et al. (2021)", fill = "") +
+  labs(title= "China and India Account for over 40% of Global Mismanaged Plastic Waste", subtitle= "Share of global mismanaged plastic by country, 2019", caption="Source: Meijer et al. (2021)", fill = "") +
   scale_fill_gradient(low = "#fcd9d6", high = "#6e0000", labels = scales::percent_format()) +
   scale_y_continuous(labels = scales::percent_format())+
   NULL +
@@ -294,6 +293,7 @@ waste_map <- ggplot(data = waste_world) +
     axis.text = element_text(size=10)) 
 
 waste_map
+
 
 
 ```
@@ -362,7 +362,7 @@ rivers_ranking <- riversJM %>%
 
   geom_col(aes(fill=ifelse((grepl("Philippines", entity))==TRUE, "#0f2b45", "grey")))+ 
   scale_fill_manual(values = c("#0f2b45", "grey")) +
-  labs(x="",y="", title="Of the Worlds Top 15 Polluting Rivers, 10 Are in the Philipines", subtitle="Share of global ocean plastic pollution from largest emitting rivers", caption = "Source: Meijer et al. (2021)")+
+  labs(x="",y="", title="Of the Worlds Top 15 Polluting Rivers, 10 Are in the Philippines", subtitle="Share of global ocean plastic pollution from largest emitting rivers, 2019", caption = "Source: Meijer et al. (2021)")+
   coord_flip()+
   theme_minimal() +
   theme(legend.position = "none") +
@@ -473,11 +473,8 @@ trade_vis <- ggplot(data=waste_trade)+
     theme(
       panel.grid.major = element_line(linetype = "dotted"),
       panel.grid.minor = element_line(linetype = "blank"),
-      # remove the vertical grid lines
-      # panel.grid.major.x = element_blank() ,
-      # # explicitly set the horizontal lines (or they will disappear too)
-      # panel.grid.major.y = element_line( size=.1, color="black"),
-
+      panel.grid.major.x = element_line( size=.1, color="black"),
+      panel.grid.major.y = element_line( size=.1, color="black"),
       plot.title.position = "plot",
       plot.title = element_text(size=16, vjust = 1, face="bold"),
       axis.title.y = element_text(angle = 0, vjust = 0.5,size=14),
@@ -485,6 +482,8 @@ trade_vis <- ggplot(data=waste_trade)+
       )
 
 trade_vis
+
+
 ```
 
 > Europe is the largest exporter of plastic waste, but it is also the largest importer of plastic waste because many European countries trade with one another. With China inducting a ban on plastic waste imports at the end of 2017, the number of exports in Asia decreased, as most traded plastic waste is traded within regions.
@@ -525,17 +524,14 @@ plot_9 <- Waste_vs_GDP_clean %>%
   theme_minimal() +
   theme(panel.grid.minor = element_blank()) +
     scale_y_continuous(labels=c("0", "1 Kg", "2 Kg", "3 Kg")) +
-  labs(title= "Largest ocean pollution contributors tend to have lower GDP / capita", subtitle = "Plastic waste in Kg emitted to the ocean per capita vs. GDP per capita, 2019", caption="Gross domestic product (GDP) per capita is measured in constant international-dollars \nwhich corrects for inflation and cross-country price differences. Source: Geyer et al. (2017)", x ="GDP per capita in $", y = "") +
+  labs(title= "Largest ocean pollution contributors tend to have lower GDP / capita", subtitle = "Plastic waste in Kg emitted to the ocean per capita vs. GDP per capita, 2017", caption="Gross domestic product (GDP) per capita is measured in constant international-dollars \nwhich corrects for inflation and cross-country price differences. Source: Geyer et al. (2017)", x ="GDP per capita in $", y = "") +
 scale_x_continuous(labels=scales::dollar_format()) +
   # geom_smooth(method='lm') +
     theme(
       panel.grid.major = element_line(linetype = "dotted"),
       panel.grid.minor = element_line(linetype = "blank"),
-      # remove the vertical grid lines
-      # panel.grid.major.x = element_blank() ,
-      # # # explicitly set the horizontal lines (or they will disappear too)
-      # panel.grid.major.y = element_line( size=.1, color="black"),
-
+      panel.grid.major.x = element_line( size=.1, color="black"),
+      panel.grid.major.y = element_line( size=.1, color="black"),
       plot.title.position = "plot",
       plot.title = element_text(size=16, vjust = 1, face="bold"),
       axis.title.y = element_text(angle = 0, vjust = 0.5,size=14),
