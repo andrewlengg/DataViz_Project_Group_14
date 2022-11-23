@@ -1,6 +1,6 @@
 ---
 title: "Group Project AM10"
-author: "Joël Merki"
+author: "Kavya Mahesh, Emma Clark, Alice Chen, Yuqiao Leng, Joël Merki"
 date: "`r Sys.Date()`"
 output:
   html_document:
@@ -62,8 +62,8 @@ library(xkcd)
 ```{r}
 
 # loading and cleaning global plastic production data
-plastic_production <- read_csv("Plastic pollution data/Global plastics production.csv")
-cum_plastic_production <- read_csv("Plastic pollution data/cumulative-global-plastics.csv")
+plastic_production <- read_csv("data/Global plastics production.csv")
+cum_plastic_production <- read_csv("data/cumulative-global-plastics.csv")
 
 plastic_production_clean <- plastic_production %>% 
   clean_names() %>% 
@@ -80,13 +80,6 @@ plastic_production_joined <- plastic_production_clean %>%
   left_join(cum_plastic_production_clean, by = "year") 
 
 glimpse(plastic_production_joined)
-
-# Plot total production only 
-proudction_plot <- plastic_production_joined %>% 
-  ggplot(aes(x = year, y = global_plastics_production)) +
-  geom_line()
-
-proudction_plot
 
 label1 <- "Global plastic production \nin 2019 has reached \n460 mn tonnes"
 
@@ -152,9 +145,9 @@ plot_1
 ```{r}
 
 # BY SECTOR: 
- sector_production <- read_csv("Plastic pollution data/plastic-production-by-sector.csv") %>%
+ sector_production <- read_csv("data/plastic-production-by-sector.csv") %>%
   janitor::clean_names()
-sector_waste <- read_csv("Plastic pollution data/plastic-waste-by-sector.csv") %>%
+sector_waste <- read_csv("data/plastic-waste-by-sector.csv") %>%
   janitor::clean_names() 
 
 sector <-full_join(sector_production,sector_waste,by=c("entity")) 
@@ -201,14 +194,14 @@ plot_2
 
 ```
 
-> \"Packaging\" produces and wastes more than twice as much as any other single industry. With the increase in online shopping and single use packaging for the shipment of goods this disparity has most likely increased since 2015 as a majority of packaging is discarded after the product it contains is received. 
+> "Packaging" produces and wastes more than twice as much as any other single industry. With the increase in online shopping and single use packaging for the shipment of goods this disparity has most likely increased since 2015 as a majority of packaging is discarded after the product it contains is received. 
 
 # Waste disposal
 
 ```{r}
 
 # loading Waste by disposal data 
-Waste_by_disposal <- vroom::vroom(here::here("/Users/joelmerki/Documents/LBS/Courses/Data visualisations/Group work/Plastic pollution data/global-plastic-fate.csv"))
+Waste_by_disposal <- read_csv("data/global-plastic-fate.csv")
 
 Waste_by_disposal_clean <- Waste_by_disposal %>% 
   clean_names() %>% 
@@ -269,7 +262,7 @@ plot_3
 world <- ne_countries(scale="medium", returnclass = "sf") %>%
   filter(name!="Antarctica")
 
-waste <- read_csv("Plastic pollution data/share-of-global-mismanaged-plastic-waste.csv") %>%
+waste <- read_csv("data/share-of-global-mismanaged-plastic-waste.csv") %>%
   janitor::clean_names()
 country_waste <- waste %>%
   drop_na(code)
@@ -312,7 +305,7 @@ waste_map
 ```{r}
 
 #PER CAPITA: 
-waste_per_person <- read_csv("Plastic pollution data/Mismanaged plastic waste.csv") %>%
+waste_per_person <- read_csv("data/Mismanaged plastic waste.csv") %>%
   janitor::clean_names() %>%
   rename(per_person=mismanaged_plastic_waste_per_capita_kg_per_year)
 country_waste_per_person <- waste_per_person %>%
@@ -353,7 +346,7 @@ waste_map_per_person
 
 ```{r}
 
-riversJM <- read_csv("Plastic pollution data/plastics-top-rivers.csv") %>%
+riversJM <- read_csv("data/plastics-top-rivers.csv") %>%
   janitor::clean_names() %>% 
   arrange(desc(share_of_global_plastics_emitted_to_ocean)) %>% 
   head(15) 
@@ -393,13 +386,13 @@ rivers_ranking
 
 ```
 
-> Of the top 15 rivers contributing plastic waste to the ocean, the Philippines contains 10 and is responsible for 35% of the world\'s plastic emitted to the ocean. This level of pollution is in large part due to the lack of infrastructure and economic resources to properly handle discarded and mismanaged waste.
+> Of the top 15 rivers contributing plastic waste to the ocean, the Philippines contains 10 and is responsible for 35% of the world's plastic emitted to the ocean. This level of pollution is in large part due to the lack of infrastructure and economic resources to properly handle discarded and mismanaged waste.
 
 # Ocean pollution map
 
 ```{r}
 
-share_plastic <- read_csv("Plastic pollution data/share-of-global-plastic-waste-emitted-to-the-ocean.csv") %>%
+share_plastic <- read_csv("data/share-of-global-plastic-waste-emitted-to-the-ocean.csv") %>%
   janitor::clean_names() %>%
   drop_na(code) %>%
   arrange(desc(share_of_global_plastics_emitted_to_ocean))
@@ -463,7 +456,7 @@ share_plastic_map2
 ```{r}
 
 # waste exports: 
-waste_trade <- read_csv("Plastic pollution data/Plastic waste exports:imports per capita.csv") %>%
+waste_trade <- read_csv("data/Plastic waste exports_imports per capita.csv") %>%
   janitor::clean_names() %>%
   filter(entity %in% c("Asia", "Europe", "North America", "World", "Africa", "Oceania", "South America")) %>%
   group_by(entity)
@@ -501,7 +494,7 @@ trade_vis
 ```{r}
 
 # loading and cleaning data
-Waste_vs_GDP <- read_csv("Plastic pollution data/ocean-plastic-waste-per-capita-vs-gdp.csv")
+Waste_vs_GDP <- read_csv("data/ocean-plastic-waste-per-capita-vs-gdp.csv")
 
 Waste_vs_GDP_clean <- Waste_vs_GDP %>% 
   clean_names() %>% 
